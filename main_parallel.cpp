@@ -1,3 +1,4 @@
+#include <omp.h>  // OpenMP: omp_set_num_threads, omp_get_wtime, omp_get_thread_num, #pragma omp
 #include "rtweekend.h"
 #include "Camera.h"
 #include "HittableList.h"
