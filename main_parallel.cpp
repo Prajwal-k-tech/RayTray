@@ -8,13 +8,11 @@
 #include <fstream>
 #include <vector>
 #include <iomanip>
-#include <chrono>
+#include <string>
 
-// Core Recursive Ray Color Function
 Color ray_color(const Ray& r, const Hittable& world, int depth) {
     hit_record rec;
 
-    // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0)
         return Color(0,0,0);
 
@@ -26,13 +24,11 @@ Color ray_color(const Ray& r, const Hittable& world, int depth) {
         return Color(0,0,0);
     }
 
-    // Background Sky Gradient
     Vec3 unit_direction = unit_vector(r.direction());
     auto t = 0.5*(unit_direction.y() + 1.0);
     return (1.0-t)*Color(1.0, 1.0, 1.0) + t*Color(0.5, 0.7, 1.0);
 }
 
-// Generates the 3D Scene
 HittableList random_scene() {
     HittableList world;
 
@@ -79,53 +75,64 @@ HittableList random_scene() {
     return world;
 }
 
-// Writes RGB Color to File
 void write_color(std::ostream &out, Color pixel_color, int samples_per_pixel) {
     auto r = pixel_color.x();
     auto g = pixel_color.y();
     auto b = pixel_color.z();
 
+    // Divide the color by the number of samples and gamma-correct for gamma=2.0.
     auto scale = 1.0 / samples_per_pixel;
     r = sqrt(scale * r);
     g = sqrt(scale * g);
     b = sqrt(scale * b);
 
+    // Write the translated [0,255] value of each color component.
     out << static_cast<int>(256 * clamp(r, 0.0, 0.999)) << ' '
         << static_cast<int>(256 * clamp(g, 0.0, 0.999)) << ' '
         << static_cast<int>(256 * clamp(b, 0.0, 0.999)) << '\n';
 }
 
-// Serial Render Function
-void render_scene_serial(const std::string& output_filename) {
-    // Image Properties
+void render_scene(int num_threads, const std::string& output_filename, double& elapsed_time) {
+    // Image
     const auto aspect_ratio = 3.0 / 2.0;
-    const int image_width = 400; 
+    const int image_width = 400; // Moderately sized to be noticeable but finish relatively quick
     const int image_height = static_cast<int>(image_width / aspect_ratio);
     const int samples_per_pixel = 50;
     const int max_depth = 10;
 
+    // World
     auto world = random_scene();
 
-    // Camera Settings
+    // Camera
     Point3 lookfrom(13,2,3);
     Point3 lookat(0,0,0);
     Vec3 vup(0,1,0);
     auto dist_to_focus = 10.0;
     auto aperture = 0.1;
+
     Camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
+    // Render Data Buffer (to separate I/O from computation)
     std::vector<Color> image_buffer(image_width * image_height);
 
-    std::cout << "Rendering Serially (1 Thread)..." << std::flush;
-    
-    // Benchmark Start (Using std::chrono instead of omp_get_wtime to ensure pure serial compilation capabilities)
-    auto start_time = std::chrono::high_resolution_clock::now();
+    // Phase 5: Thread Setting
+    omp_set_num_threads(num_threads);
 
-    // PURE SERIAL LOOP: No OpenMP Directives
+    std::cout << "Rendering with " << num_threads << " thread(s)..." << std::flush;
+    
+    // Phase 5: Benchmark Start
+    double start_time = omp_get_wtime();
+
+    // Phase 2: OpenMP multithreading on the outer loop
+    // EXPLANATION: schedule(dynamic) is chosen over static because ray-tracing load is highly unbalanced. 
+    // Rays hitting the background (sky) complete instantly, while rays hitting glass or metal
+    // bounce multiple times. Static scheduling would leave some threads idle while others struggle 
+    // with heavy chunks. Dynamic scheduling gives threads new rows as soon as they finish their current one.
+    #pragma omp parallel for schedule(dynamic)
     for (int j = image_height - 1; j >= 0; --j) {
-        
-        // Seed PRNG uniquely for this row
-        seed_random(42 + j, 0);
+        // Phase 3: Thread-local random number generator seeding
+        // Seed based on a combination of time/row and thread ID to ensure unique, repeatable sequences per thread
+        seed_random(42 + j, omp_get_thread_num());
 
         for (int i = 0; i < image_width; ++i) {
             Color pixel_color(0, 0, 0);
@@ -135,15 +142,17 @@ void render_scene_serial(const std::string& output_filename) {
                 Ray r = cam.get_ray(u, v);
                 pixel_color += ray_color(r, world, max_depth);
             }
+            // Store in buffer
             image_buffer[(image_height - 1 - j) * image_width + i] = pixel_color;
         }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end_time - start_time;
-    std::cout << " Done in " << elapsed.count() << " seconds.\n";
+    // Phase 5: Benchmark End
+    double end_time = omp_get_wtime();
+    elapsed_time = end_time - start_time;
+    std::cout << " Done in " << elapsed_time << " seconds.\n";
 
-    // Write to PPM file
+    // Write to file (Serial I/O - excluded from timing as it doesn't parallelize scaling)
     std::ofstream out_file(output_filename);
     out_file << "P3\n" << image_width << ' ' << image_height << "\n255\n";
     for (int i = 0; i < image_width * image_height; ++i) {
@@ -153,9 +162,36 @@ void render_scene_serial(const std::string& output_filename) {
 }
 
 int main() {
-    std::cout << "Starting Pure Serial Monte Carlo Path Tracer\n";
-    std::cout << "=============================================\n";
-    render_scene_serial("serial_output.ppm");
-    std::cout << "Render complete! Image saved to serial_output.ppm\n";
+    std::cout << "Starting Monte Carlo Path Tracer Benchmarks (Phases 1-5)\n";
+    std::cout << "=========================================================\n";
+
+    std::vector<int> thread_counts = {1, 2, 4, 8, 16};
+    std::vector<double> times;
+
+    // CSV Output
+    std::ofstream csv_file("benchmark_results.csv");
+    csv_file << "Threads,Time(s),Speedup,Efficiency\n";
+
+    double serial_time = 0.0;
+
+    for (int t : thread_counts) {
+        double elapsed;
+        std::string filename = "image_t" + std::to_string(t) + ".ppm";
+        render_scene(t, filename, elapsed);
+        
+        times.push_back(elapsed);
+        if (t == 1) {
+            serial_time = elapsed;
+        }
+
+        double speedup = serial_time / elapsed;
+        double efficiency = speedup / t;
+
+        csv_file << t << "," << elapsed << "," << speedup << "," << efficiency << "\n";
+    }
+
+    csv_file.close();
+
+    std::cout << "\nBenchmarks complete! Results written to benchmark_results.csv\n";
     return 0;
 }

@@ -2,12 +2,31 @@ cmake_minimum_required(VERSION 3.16)
 
 project(RayTray LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+# Serial - Module-I (RTIOW)
 add_executable(raytracer main.cpp)
-
-target_compile_features(raytracer PRIVATE cxx_std_11)
-
-if (MSVC)
+target_compile_features(raytracer PRIVATE cxx_std_17)
+if(MSVC)
     target_compile_options(raytracer PRIVATE /W4)
 else()
-    target_compile_options(raytracer PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(raytracer PRIVATE -Wall -Wextra -pedantic -O3)
+endif()
+
+# Parallel - Module-II (OpenMP)
+add_executable(raytracer_parallel main_parallel.cpp)
+target_compile_features(raytracer_parallel PRIVATE cxx_std_17)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(raytracer_parallel OpenMP::OpenMP_CXX)
+endif()
+if(MSVC)
+    target_compile_options(raytracer_parallel PRIVATE /W4)
+else()
+    target_compile_options(raytracer_parallel PRIVATE -Wall -Wextra -pedantic -O3)
 endif()
