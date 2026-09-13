@@ -114,10 +114,11 @@ void render_scene(int num_threads, const std::string& output_filename, double& e
     
     double start_time = omp_get_wtime();
 
-    // OpenMP: parallelize outer row loop - dynamic scheduling for load balance
+    // ==================== PARALLELIZED WITH OPENMP (vs main_serial.cpp) ====================
+    // Only this outer loop is parallelized - schedule(dynamic) for load balance
     #pragma omp parallel for schedule(dynamic)
     for (int j = image_height - 1; j >= 0; --j) {
-        seed_random(42 + j, omp_get_thread_num()); // thread-local RNG
+        seed_random(42 + j, omp_get_thread_num()); // thread-local RNG (OpenMP)
 
         for (int i = 0; i < image_width; ++i) {
             Color pixel_color(0, 0, 0);
@@ -134,6 +135,7 @@ void render_scene(int num_threads, const std::string& output_filename, double& e
     double end_time = omp_get_wtime();
     elapsed_time = end_time - start_time;
     std::cout << " Done in " << elapsed_time << " seconds.\n";
+    // ==================== END PARALLELIZED BLOCK ====================
 
     std::ofstream out_file(output_filename);
     out_file << "P3\n" << image_width << ' ' << image_height << "\n255\n";
