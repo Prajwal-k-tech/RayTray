@@ -1,3 +1,5 @@
+// Topic: Ray Tracing — Monte Carlo Path Tracer (Ray Tracing in One Weekend + OpenMP)
+// Group: 2024BCS0096 Prajwal Kumar, 2024BCS120 Chandra Teja — PDC Batch 2024, Assignment-I
 #include "rtweekend.h"
 #include "Camera.h"
 #include "HittableList.h"
@@ -153,6 +155,8 @@ void render_scene_serial(const std::string& output_filename) {
 }
 
 int main() {
+    std::cout << "Topic: Ray Tracing - Monte Carlo Path Tracer (Ray Tracing in One Weekend)\n";
+    std::cout << "Group: 2024BCS0096 Prajwal Kumar | 2024BCS120 Chandra Teja\n";
     std::cout << "Starting Pure Serial Monte Carlo Path Tracer\n";
     std::cout << "=============================================\n";
     render_scene_serial("serial_output.ppm");

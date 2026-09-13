@@ -1,5 +1,5 @@
-// Parallel version - OpenMP (Module-II) - print this for Module-II
-// Same as main_serial.cpp, but row loop is parallelized with OpenMP
+// Topic: Ray Tracing — Monte Carlo Path Tracer (Ray Tracing in One Weekend + OpenMP)
+// Group: 2024BCS0096 Prajwal Kumar, 2024BCS120 Chandra Teja — PDC Batch 2024, Assignment-I
 #include <omp.h>  // OpenMP
 #include "rtweekend.h"
 #include "Camera.h"
@@ -146,6 +146,8 @@ void render_scene(int num_threads, const std::string& output_filename, double& e
 }
 
 int main() {
+    std::cout << "Topic: Ray Tracing - Monte Carlo Path Tracer (Ray Tracing in One Weekend)\n";
+    std::cout << "Group: 2024BCS0096 Prajwal Kumar | 2024BCS120 Chandra Teja\n";
     std::cout << "Starting Monte Carlo Path Tracer Benchmarks (Phases 1-5)\n";
     std::cout << "=========================================================\n";
 #ifdef _OPENMP
