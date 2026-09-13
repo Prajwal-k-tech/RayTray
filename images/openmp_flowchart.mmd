@@ -1,0 +1,24 @@
+flowchart TD
+    A["main() <br/> thread_counts = [1,2,4,8,16]"] --> B["for each t in thread_counts <br/> render_scene(t, image_t#.ppm, elapsed)"]
+    B --> C["render_scene() <br/> • random_scene() <br/> • Camera(lookfrom/lookat) <br/> • image_buffer[W*H]"]
+    C --> D["omp_set_num_threads(t) <br/> start = omp_get_wtime()"]
+    D --> E["// PARALLEL REGION<br/>#pragma omp parallel for schedule(dynamic)"]
+    E --> F["for j = H-1 downto 0<br/>(rows distributed dynamically)"]
+    F --> G["seed_random(42+j, omp_get_thread_num())<br/>thread-local PCG RNG"]
+    G --> H["for i = 0 .. W-1"]
+    H --> I["pixel_color = 0<br/>for s = 0 .. SPP-1<br/>  u,v = (i+rand)/ (W-1)<br/>  r = cam.get_ray(u,v)<br/>  pixel_color += ray_color(r, world, depth)"]
+    I --> J["image_buffer[(H-1-j)*W + i] = pixel_color"]
+    J --> K{"More rows?"}
+    K -->|Yes, idle thread grabs next row| F
+    K -->|All rows done - implicit barrier| L["end = omp_get_wtime()<br/>elapsed = end-start"]
+    L --> M["Serial I/O (outside timing)<br/>write P3 header + image_buffer → image_t#.ppm"]
+    M --> N["return elapsed to main()"]
+    N --> O["main: speedup = T1/Tp<br/>efficiency = speedup/t<br/>csv → benchmark_results.csv"]
+    O --> P{"More t?"}
+    P -->|Yes| B
+    P -->|No| Q["Done - 5 images + CSV"]
+
+    style E fill:#0b5394,stroke:#073763,color:#fff
+    style G fill:#e69138,stroke:#b45f06,color:#fff
+    style K fill:#fff2cc,stroke:#d6b656
+    style M fill:#d9ead3,stroke:#6aa84f
