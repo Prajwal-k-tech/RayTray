@@ -1,0 +1,27 @@
+flowchart TD
+    A(["Master Thread<br/>main"]) --> B["Initialize<br/>scene + Camera + buffer"]
+    B --> C["omp_set_num_threads + omp_get_wtime"]
+    C --> D{"FORK<br/>#pragma omp parallel for schedule dynamic"}
+    D --> T0["Thread 0<br/>seed_random + rows"]
+    D --> T1["Thread 1<br/>seed_random + rows"]
+    D --> T2["Thread 2<br/>rows"]
+    D --> TN["Thread N<br/>rows"]
+    T0 --- NOTE["Dynamic: idle thread grabs next row"]
+    T1 --- NOTE
+    T2 --- NOTE
+    TN --- NOTE
+    T0 --> J{{JOIN<br/>barrier}}
+    T1 --> J
+    T2 --> J
+    TN --> J
+    J --> K["Master<br/>omp_get_wtime + speedup + CSV"]
+    K --> L["Serial I/O<br/>write PPM"]
+    L --> M(["Done"])
+
+    style D fill:#0b5394,stroke:#073763,color:#fff
+    style J fill:#ffd966,stroke:#bf9000
+    style NOTE fill:#fff2cc,stroke:#d6b656
+    style T0 fill:#e69138,stroke:#b45f06,color:#fff
+    style T1 fill:#e69138,stroke:#b45f06,color:#fff
+    style T2 fill:#e69138,stroke:#b45f06,color:#fff
+    style TN fill:#e69138,stroke:#b45f06,color:#fff
