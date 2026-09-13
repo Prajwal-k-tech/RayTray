@@ -1,0 +1,8 @@
+raytracer
+main
+image.ppm
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
