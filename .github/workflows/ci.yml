@@ -1,0 +1,20 @@
+name: CMake build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build serial and OpenMP renderers
+        run: cmake --build build --parallel
+      - name: Require the OpenMP target on the CI image
+        run: cmake --build build --target raytracer_parallel

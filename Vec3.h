@@ -5,6 +5,12 @@
 #include <iostream>
 #include "random.h"
 
+#ifdef _OPENMP
+#define RAYTRAY_DECLARE_SIMD _Pragma("omp declare simd")
+#else
+#define RAYTRAY_DECLARE_SIMD
+#endif
+
 // Phase 4: SIMD Vectorization
 // Use OpenMP declare simd to inform the compiler to vectorize operations.
 class Vec3 {
@@ -18,18 +24,18 @@ public:
     double y() const { return e[1]; }
     double z() const { return e[2]; }
 
-    #pragma omp declare simd
+    RAYTRAY_DECLARE_SIMD
     Vec3 operator-() const { return Vec3(-e[0], -e[1], -e[2]); }
     double operator[](int i) const { return e[i]; }
     double& operator[](int i) { return e[i]; }
 
-    #pragma omp declare simd
+    RAYTRAY_DECLARE_SIMD
     Vec3& operator+=(const Vec3 &v) {
         e[0] += v.e[0]; e[1] += v.e[1]; e[2] += v.e[2];
         return *this;
     }
 
-    #pragma omp declare simd
+    RAYTRAY_DECLARE_SIMD
     Vec3& operator*=(const double t) {
         e[0] *= t; e[1] *= t; e[2] *= t;
         return *this;
@@ -39,12 +45,12 @@ public:
         return *this *= 1/t;
     }
 
-    #pragma omp declare simd
+    RAYTRAY_DECLARE_SIMD
     double length() const {
         return std::sqrt(length_squared());
     }
 
-    #pragma omp declare simd
+    RAYTRAY_DECLARE_SIMD
     double length_squared() const {
         return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
     }
@@ -62,49 +68,49 @@ inline std::ostream& operator<<(std::ostream &out, const Vec3 &v) {
     return out << v.e[0] << ' ' << v.e[1] << ' ' << v.e[2];
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 operator+(const Vec3 &u, const Vec3 &v) {
     return Vec3(u.e[0] + v.e[0], u.e[1] + v.e[1], u.e[2] + v.e[2]);
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 operator-(const Vec3 &u, const Vec3 &v) {
     return Vec3(u.e[0] - v.e[0], u.e[1] - v.e[1], u.e[2] - v.e[2]);
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 operator*(const Vec3 &u, const Vec3 &v) {
     return Vec3(u.e[0] * v.e[0], u.e[1] * v.e[1], u.e[2] * v.e[2]);
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 operator*(double t, const Vec3 &v) {
     return Vec3(t*v.e[0], t*v.e[1], t*v.e[2]);
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 operator*(const Vec3 &v, double t) {
     return t * v;
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 operator/(Vec3 v, double t) {
     return (1/t) * v;
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline double dot(const Vec3 &u, const Vec3 &v) {
     return u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2];
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 cross(const Vec3 &u, const Vec3 &v) {
     return Vec3(u.e[1] * v.e[2] - u.e[2] * v.e[1],
                 u.e[2] * v.e[0] - u.e[0] * v.e[2],
                 u.e[0] * v.e[1] - u.e[1] * v.e[0]);
 }
 
-#pragma omp declare simd
+RAYTRAY_DECLARE_SIMD
 inline Vec3 unit_vector(Vec3 v) {
     return v / v.length();
 }
@@ -147,6 +153,8 @@ inline Vec3 refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
     Vec3 r_out_parallel = -std::sqrt(std::fabs(1.0 - r_out_perp.length_squared())) * n;
     return r_out_perp + r_out_parallel;
 }
+
+#undef RAYTRAY_DECLARE_SIMD
 
 inline Vec3 random_in_unit_disk() {
     while (true) {

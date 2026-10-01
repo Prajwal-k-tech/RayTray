@@ -4,7 +4,6 @@
 #include <cmath>
 #include <limits>
 #include <memory>
-#include <omp.h>
 
 // Usings
 using std::shared_ptr;
