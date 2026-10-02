@@ -1,5 +1,4 @@
-// Topic: Ray Tracing — Monte Carlo Path Tracer (Ray Tracing in One Weekend + OpenMP)
-// Group: 2024BCS0096 Prajwal Kumar, 2024BCS120 Chandra Teja — PDC Batch 2024, Assignment-I
+// Course project by Prajwal Kumar K and Chandra Teja, based on Ray Tracing in One Weekend.
 #include <omp.h>  // OpenMP
 #include "rtweekend.h"
 #include "Camera.h"
@@ -10,7 +9,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <iomanip>
 #include <string>
 
 Color ray_color(const Ray& r, const Hittable& world, int depth) {
@@ -97,6 +95,7 @@ void render_scene(int num_threads, const std::string& output_filename, double& e
     const int samples_per_pixel = 50;
     const int max_depth = 10;
 
+    seed_random(42, 0);
     auto world = random_scene();
 
     Point3 lookfrom(13,2,3);
@@ -118,7 +117,8 @@ void render_scene(int num_threads, const std::string& output_filename, double& e
     // Only this outer loop is parallelized - schedule(dynamic) for load balance
     #pragma omp parallel for schedule(dynamic)
     for (int j = image_height - 1; j >= 0; --j) {
-        seed_random(42 + j, omp_get_thread_num()); // thread-local RNG (OpenMP)
+        // A row's sequence is independent of which worker executes it.
+        seed_random(42 + j, 0);
 
         for (int i = 0; i < image_width; ++i) {
             Color pixel_color(0, 0, 0);
@@ -146,8 +146,6 @@ void render_scene(int num_threads, const std::string& output_filename, double& e
 }
 
 int main() {
-    std::cout << "Topic: Ray Tracing - Monte Carlo Path Tracer (Ray Tracing in One Weekend)\n";
-    std::cout << "Group: 2024BCS0096 Prajwal Kumar | 2024BCS120 Chandra Teja\n";
     std::cout << "Starting Monte Carlo Path Tracer Benchmarks (Phases 1-5)\n";
     std::cout << "=========================================================\n";
 #ifdef _OPENMP
@@ -155,10 +153,8 @@ int main() {
 #endif
 
     std::vector<int> thread_counts = {1, 2, 4, 8, 16};
-    std::vector<double> times;
-
     std::ofstream csv_file("benchmark_results.csv");
-    csv_file << "Threads,Time(s),Speedup,Efficiency\n";
+    csv_file << "Threads,RenderTimeSeconds,SpeedupVsOpenMP1Thread,Efficiency\n";
 
     double serial_time = 0.0;
 
@@ -167,7 +163,6 @@ int main() {
         std::string filename = "image_t" + std::to_string(t) + ".ppm";
         render_scene(t, filename, elapsed);
         
-        times.push_back(elapsed);
         if (t == 1) serial_time = elapsed;
 
         double speedup = serial_time / elapsed;
