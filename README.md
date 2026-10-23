@@ -38,3 +38,7 @@ The CSV reports render-loop time and speedup relative to the OpenMP run with one
 ## Attribution and scope
 
 This is a team course project by Prajwal Kumar K and Chandra Teja. Its learning path and core ray-tracing concepts follow *Ray Tracing in One Weekend*; the OpenMP work adds a separate parallel implementation. The book-series source repository is published under CC0: [RayTracing/raytracing.github.io](https://github.com/RayTracing/raytracing.github.io). This repository has no separate license file; ask both contributors before reusing project-specific changes.
+
+## Recovery
+
+See [RECOVERY.md](RECOVERY.md) for rebuilding an offloaded checkout and restoring its dependencies/data.
